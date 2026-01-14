@@ -64,7 +64,7 @@ npm run dev
 
 ```env
 # AI設定（エンジン・フロントエンド共通で使用）
-AI_PROVIDER=openai                    # openai または anthropic
+AI_PROVIDER=openai                    # openai, anthropic, ollama
 NEXT_PUBLIC_AI_PROVIDER=openai
 AI_MODEL=gpt-4o                       # 使用するモデル
 NEXT_PUBLIC_AI_MODEL=gpt-4o
@@ -86,7 +86,7 @@ DATABASE_URL="file:./dev.db"
 
 ### AIプロバイダーの切り替え
 
-`.env.local` を編集するだけでOpenAI/Anthropicを切り替えられます:
+`.env.local` を編集するだけでOpenAI/Anthropic/Ollamaを切り替えられます:
 
 **Anthropicを使う場合:**
 ```env
@@ -97,6 +97,17 @@ NEXT_PUBLIC_AI_MODEL=claude-sonnet-4-20250514
 ANTHROPIC_API_KEY=sk-ant-xxxxx
 NEXT_PUBLIC_ANTHROPIC_API_KEY=sk-ant-xxxxx
 ```
+
+**Ollama（ローカルLLM）を使う場合:**
+```env
+AI_PROVIDER=ollama
+NEXT_PUBLIC_AI_PROVIDER=ollama
+AI_MODEL=deepseek-r1:14b              # または qwen2.5, llama3.2 など
+NEXT_PUBLIC_AI_MODEL=deepseek-r1:14b
+# APIキーは不要
+```
+
+> **Note**: Ollamaを使用するには、事前に https://ollama.ai/ からOllamaをインストールし、使用するモデルを `ollama pull deepseek-r1:14b` などでダウンロードしておく必要があります。図の生成には高性能なモデル（DeepSeek R1、Qwen2.5など）を推奨します。
 
 変更後はDockerコンテナを再起動してください:
 ```bash
@@ -206,7 +217,7 @@ docker run -d -p 6002:3000 \
   wbsu2003/next-ai-draw-io:latest
 ```
 
-> **Note**: 図形生成エンジンには `AI_PROVIDER`、`AI_MODEL`、および対応するAPIキーの環境変数が必須です。
+> **Note**: 図形生成エンジンには `AI_PROVIDER`、`AI_MODEL`、および対応するAPIキー（Ollama以外）の環境変数が必須です。
 
 ### コンテナの停止
 
@@ -222,7 +233,8 @@ docker compose down -v
 このアプリは [next-ai-draw-io](https://github.com/DayuanJiang/next-ai-draw-io) をバックエンドとして使用します。
 
 - **Dockerイメージ**: `wbsu2003/next-ai-draw-io:latest` (DockerHub)
-- **必須環境変数**: `AI_PROVIDER`、`AI_MODEL`、APIキー（`OPENAI_API_KEY` or `ANTHROPIC_API_KEY`）
+- **必須環境変数**: `AI_PROVIDER`、`AI_MODEL`、APIキー（Ollama以外）
+- **対応プロバイダー**: OpenAI, Anthropic, Ollama（ローカルLLM）
 - `.env.local` で一元管理し、エンジンとフロントエンドで共有
 
 ## ライセンス

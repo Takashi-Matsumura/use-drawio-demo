@@ -12,6 +12,10 @@ services:
       - .env.local
     environment:
       - NODE_ENV=production
+      # Ollama使用時: Docker内からホストのOllamaに接続
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "exit 0"]

@@ -85,11 +85,19 @@ export default function Home() {
 
       const aiProvider = process.env.NEXT_PUBLIC_AI_PROVIDER || "openai";
       const aiModel = process.env.NEXT_PUBLIC_AI_MODEL || "gpt-4o";
-      const apiKey = aiProvider === "anthropic"
-        ? process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY
-        : process.env.NEXT_PUBLIC_OPENAI_API_KEY;
 
-      if (!apiKey) {
+      // Ollamaの場合はAPIキー不要
+      let apiKey = "";
+      if (aiProvider === "ollama") {
+        // Ollamaはローカル実行のためAPIキー不要
+        apiKey = "ollama-local";
+      } else if (aiProvider === "anthropic") {
+        apiKey = process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY || "";
+      } else {
+        apiKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY || "";
+      }
+
+      if (!apiKey && aiProvider !== "ollama") {
         setError(
           `API Keyが設定されていません。.env.localファイルで${aiProvider === "anthropic" ? "NEXT_PUBLIC_ANTHROPIC_API_KEY" : "NEXT_PUBLIC_OPENAI_API_KEY"}を確認してください。`
         );
@@ -447,7 +455,11 @@ export default function Home() {
         {/* フッター */}
         <div className="p-3 border-t border-gray-200 shrink-0">
           <p className="text-xs text-gray-400 text-center">
-            Powered by {process.env.NEXT_PUBLIC_AI_PROVIDER === "anthropic" ? "Anthropic" : "OpenAI"} & draw.io
+            Powered by {
+              process.env.NEXT_PUBLIC_AI_PROVIDER === "anthropic" ? "Anthropic" :
+              process.env.NEXT_PUBLIC_AI_PROVIDER === "ollama" ? "Ollama (Local)" :
+              "OpenAI"
+            } & draw.io
           </p>
         </div>
       </div>
