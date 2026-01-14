@@ -1,21 +1,32 @@
 services:
   # ============================================
+  # Ollama (ローカルLLM) - Ollama使用時のみ起動
+  # ============================================
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+      - "6002:3000"
+    volumes:
+      # ホストの認証情報をマウント（Ollama Connectクラウドモデル用）
+      - ~/.ollama:/root/.ollama
+    restart: unless-stopped
+
+  # ============================================
   # AI図形生成エンジン (next-ai-draw-io)
   # ============================================
   drawio-engine:
     image: wbsu2003/next-ai-draw-io:latest
     platform: linux/amd64
     container_name: drawio-engine
-    ports:
-      - "6002:3000"
+    network_mode: "service:ollama"
     env_file:
       - .env.local
     environment:
       - NODE_ENV=production
-      # Ollama使用時: Docker内からホストのOllamaに接続
-      - OLLAMA_BASE_URL=http://host.docker.internal:11434
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    depends_on:
+      - ollama
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "exit 0"]

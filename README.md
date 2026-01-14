@@ -15,18 +15,18 @@ AIを使って業務フロー図を生成・管理するデモアプリケーシ
 - **フロントエンド**: Next.js 16, React 19, TypeScript
 - **エディタ**: react-drawio (draw.io埋め込み)
 - **データベース**: SQLite + Prisma
-- **AI**: OpenAI GPT-4o (または Anthropic Claude)
+- **AI**: OpenAI GPT-4o / Anthropic Claude / Ollama（ローカル・クラウド両対応）
 - **スタイリング**: Tailwind CSS
 
 ## アーキテクチャ
 
 ```
-┌─────────────────┐     ┌──────────────────┐     ┌─────────────┐
-│  このアプリ      │────▶│  next-ai-draw-io │────▶│  OpenAI API │
-│  (フロントエンド) │     │  (図形生成エンジン)│     │             │
-└─────────────────┘     └──────────────────┘     └─────────────┘
-        │
-        ▼
+┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
+│  このアプリ      │────▶│  next-ai-draw-io │────▶│  OpenAI API     │
+│  (フロントエンド) │     │  (図形生成エンジン)│     │  Anthropic API  │
+└─────────────────┘     └──────────────────┘     │  Ollama (Local) │
+        │                                        │  Ollama Connect │
+        ▼                                        └─────────────────┘
 ┌─────────────────┐
 │  SQLite         │
 │  (データ保存)    │
@@ -107,7 +107,18 @@ NEXT_PUBLIC_AI_MODEL=deepseek-r1:14b
 # APIキーは不要
 ```
 
+**Ollama Connect（クラウドモデル）を使う場合:**
+```env
+AI_PROVIDER=ollama
+NEXT_PUBLIC_AI_PROVIDER=ollama
+AI_MODEL=qwen3-coder:480b-cloud       # Ollama Connectクラウドモデル
+NEXT_PUBLIC_AI_MODEL=qwen3-coder:480b-cloud
+# APIキーは不要（Ollama Connect認証を使用）
+```
+
 > **Note**: Ollamaを使用するには、事前に https://ollama.ai/ からOllamaをインストールし、使用するモデルを `ollama pull deepseek-r1:14b` などでダウンロードしておく必要があります。図の生成には高性能なモデル（DeepSeek R1、Qwen2.5など）を推奨します。
+>
+> **Ollama Connectについて**: `qwen3-coder:480b-cloud` などの `-cloud` サフィックス付きモデルは、[Ollama Connect](https://ollama.com/blog/ollama-is-now-available-on-all-devices) を使用してクラウド上で実行されます。事前に `ollama connect` コマンドで認証を完了しておく必要があります。
 
 変更後はDockerコンテナを再起動してください:
 ```bash
@@ -184,9 +195,86 @@ docker compose logs -f
 
 | サービス | ポート | 説明 |
 |---------|--------|------|
-| `drawio-engine` | 6002 | AI図形生成エンジン ([next-ai-draw-io](https://github.com/DayuanJiang/next-ai-draw-io)) |
+| `ollama` | 11434, 6002 | Ollama LLMサーバー（Ollama使用時のみ） |
+| `drawio-engine` | - | AI図形生成エンジン ([next-ai-draw-io](https://github.com/DayuanJiang/next-ai-draw-io)) |
 
 > **Note**: フロントエンドは開発サーバー（`npm run dev`）を使用します。
+> drawio-engineはOllamaコンテナとネットワークを共有し、ポート6002はOllamaコンテナ経由で公開されます。
+
+### Ollama + Docker での起動
+
+Ollamaを使用する場合、docker-compose.ymlは以下の構成で動作します：
+
+```yaml
+services:
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+      - "6002:3000"
+    volumes:
+      # ホストの認証情報をマウント（Ollama Connectクラウドモデル用）
+      - ~/.ollama:/root/.ollama
+
+  drawio-engine:
+    image: wbsu2003/next-ai-draw-io:latest
+    network_mode: "service:ollama"  # Ollamaとネットワーク共有
+    env_file:
+      - .env.local
+```
+
+**重要**: Ollama Connectクラウドモデル（`qwen3-coder:480b-cloud`など）を使用する場合、ホストの `~/.ollama` ディレクトリをマウントすることで、認証情報がDockerコンテナに引き継がれます。
+
+### なぜホストのOllamaではなくDockerコンテナが必要か
+
+drawio-engineイメージは**OllamaのURLを`127.0.0.1:11434`にハードコード**しており、環境変数では変更できません。
+
+#### 試した方法と失敗理由
+
+| 方法 | 結果 | 理由 |
+|------|------|------|
+| `OLLAMA_BASE_URL` 環境変数 | ❌ | イメージが無視する |
+| `OLLAMA_HOST` 環境変数 | ❌ | イメージが無視する |
+| `host.docker.internal` | ❌ | イメージが読み取らない |
+| `network_mode: "host"` | ❌ | Mac版Docker Desktopでは機能しない（VMの制限） |
+
+#### Dockerコンテナ内の `localhost` の問題
+
+Dockerコンテナ内の `localhost` はコンテナ自身を指すため、ホストで動作しているOllamaには到達できません：
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  Docker Desktop (Linux VM)                              │
+│  ┌─────────────────┐                                    │
+│  │ drawio-engine   │                                    │
+│  │ localhost:11434 │ ──→ コンテナ自身（Ollamaなし）❌    │
+│  └─────────────────┘                                    │
+└─────────────────────────────────────────────────────────┘
+         ↓ 到達不可
+┌─────────────────┐
+│  Mac (ホスト)    │
+│  Ollama :11434  │
+└─────────────────┘
+```
+
+#### 解決策: ネットワーク名前空間の共有
+
+`network_mode: "service:ollama"` を使用することで、drawio-engineとOllamaコンテナが同じネットワーク名前空間を共有します：
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  Docker Desktop (Linux VM)                              │
+│  ┌─────────────────────────────────────────────┐        │
+│  │ 共有ネットワーク名前空間                      │        │
+│  │  ┌─────────────┐    ┌─────────────────┐     │        │
+│  │  │   Ollama    │◀───│  drawio-engine  │     │        │
+│  │  │   :11434    │    │  localhost:11434│     │        │
+│  │  └─────────────┘    └─────────────────┘     │        │
+│  └─────────────────────────────────────────────┘        │
+└─────────────────────────────────────────────────────────┘
+```
+
+この構成により、drawio-engineが `localhost:11434` に接続すると、同じネットワーク名前空間内のOllamaコンテナに到達します。
 
 ### Apple Silicon (M1/M2/M3) での注意
 
@@ -236,6 +324,19 @@ docker compose down -v
 - **必須環境変数**: `AI_PROVIDER`、`AI_MODEL`、APIキー（Ollama以外）
 - **対応プロバイダー**: OpenAI, Anthropic, Ollama（ローカルLLM）
 - `.env.local` で一元管理し、エンジンとフロントエンドで共有
+
+## 検証済みモデル
+
+以下のモデルで動作確認済みです：
+
+| プロバイダー | モデル | 備考 |
+|-------------|--------|------|
+| OpenAI | `gpt-4o` | 推奨 |
+| Anthropic | `claude-sonnet-4-20250514` | 推奨 |
+| Ollama (Cloud) | `qwen3-coder:480b-cloud` | Ollama Connect経由、高性能 |
+| Ollama (Local) | `deepseek-r1:14b`, `qwen2.5` | ローカル実行 |
+
+> **検証環境**: macOS (Apple Silicon M3), Docker Desktop, Next.js 16
 
 ## ライセンス
 
