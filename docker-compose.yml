@@ -1,25 +1,49 @@
 services:
   # ============================================
-  # Ollama (ローカルLLM) - Ollama使用時のみ起動
-  # ============================================
-  ollama:
-    image: ollama/ollama:latest
-    container_name: ollama
-    ports:
-      - "11434:11434"
-      - "6002:3000"
-    volumes:
-      # ホストの認証情報をマウント（Ollama Connectクラウドモデル用）
-      - ~/.ollama:/root/.ollama
-    restart: unless-stopped
-
-  # ============================================
   # AI図形生成エンジン (next-ai-draw-io)
   # ============================================
   drawio-engine:
     image: wbsu2003/next-ai-draw-io:latest
     platform: linux/amd64
     container_name: drawio-engine
+    ports:
+      - "6002:3000"
+    env_file:
+      - .env.local
+    environment:
+      - NODE_ENV=production
+      # OpenAI互換API（llama.cpp, LM Studio）用
+      - OPENAI_BASE_URL=http://host.docker.internal:8080/v1
+      - OPENAI_API_BASE=http://host.docker.internal:8080/v1
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "exit 0"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ============================================
+  # Ollama (Ollama使用時のみ起動)
+  # docker compose up ollama drawio-engine-ollama
+  # ============================================
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ~/.ollama:/root/.ollama
+    restart: unless-stopped
+    profiles:
+      - ollama
+
+  drawio-engine-ollama:
+    image: wbsu2003/next-ai-draw-io:latest
+    platform: linux/amd64
+    container_name: drawio-engine-ollama
     network_mode: "service:ollama"
     env_file:
       - .env.local
@@ -34,5 +58,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
+    profiles:
+      - ollama
 
 # フロントエンドは開発サーバー（npm run dev）を使用
