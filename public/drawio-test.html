@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Draw.io Pure HTML Test</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; }
+    iframe { width: 100%; height: 100%; border: none; }
+  </style>
+</head>
+<body>
+  <iframe
+    id="drawio"
+    src="https://embed.diagrams.net/?embed=1&proto=json&ui=kennedy&spin=1&libraries=1"
+    allow="clipboard-read; clipboard-write"
+  ></iframe>
+
+  <script>
+    const iframe = document.getElementById('drawio');
+
+    window.addEventListener('message', (event) => {
+      if (event.origin !== 'https://embed.diagrams.net') return;
+
+      try {
+        const data = JSON.parse(event.data);
+        console.log('Message from draw.io:', data);
+
+        if (data.event === 'init') {
+          console.log('Sending load action...');
+          iframe.contentWindow.postMessage(JSON.stringify({
+            action: 'load',
+            xml: '',
+            autosave: false
+          }), '*');
+        }
+      } catch (e) {}
+    });
+  </script>
+</body>
+</html>

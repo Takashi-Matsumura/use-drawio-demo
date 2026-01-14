@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  # ============================================
+  # AI図形生成エンジン (next-ai-draw-io)
+  # ============================================
+  drawio-engine:
+    image: ghcr.io/dayuanjiang/next-ai-draw-io:latest
+    container_name: drawio-engine
+    ports:
+      - "6002:3000"
+    environment:
+      # APIキーは設定しない（フロントエンドからヘッダーで送信）
+      # セキュリティ上、コンテナ内にキーを保持しない設計
+      - NODE_ENV=production
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ============================================
+  # フロントエンド (このアプリ)
+  # ============================================
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: drawio-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DRAWIO_API_URL=http://drawio-engine:3000
+      - DATABASE_URL=file:/app/prisma/data/dev.db
+    volumes:
+      # データベースを永続化
+      - db-data:/app/prisma/data
+    depends_on:
+      drawio-engine:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  db-data:
+    driver: local
