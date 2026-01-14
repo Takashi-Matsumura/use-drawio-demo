@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # ============================================
   # AI図形生成エンジン (next-ai-draw-io)
@@ -22,28 +20,4 @@ services:
       retries: 3
       start_period: 10s
 
-  # ============================================
-  # フロントエンド (このアプリ)
-  # ============================================
-  frontend:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: drawio-frontend
-    ports:
-      - "3000:3000"
-    environment:
-      - NODE_ENV=production
-      - DRAWIO_API_URL=http://drawio-engine:3000
-      - DATABASE_URL=file:/app/prisma/data/dev.db
-    volumes:
-      # データベースを永続化
-      - db-data:/app/prisma/data
-    depends_on:
-      drawio-engine:
-        condition: service_healthy
-    restart: unless-stopped
-
-volumes:
-  db-data:
-    driver: local
+# フロントエンドは開発サーバー（npm run dev）を使用

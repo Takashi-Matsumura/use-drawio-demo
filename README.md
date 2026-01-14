@@ -174,7 +174,24 @@ docker compose logs -f
 | サービス | ポート | 説明 |
 |---------|--------|------|
 | `drawio-engine` | 6002 | AI図形生成エンジン ([next-ai-draw-io](https://github.com/DayuanJiang/next-ai-draw-io)) |
-| `frontend` | 3000 | このアプリ（フロントエンド） |
+
+> **Note**: フロントエンドは開発サーバー（`npm run dev`）を使用します。
+
+### Apple Silicon (M1/M2/M3) での注意
+
+DockerHub上のnext-ai-draw-ioイメージはすべて **AMD64 (x86_64)** 用です。
+Apple Silicon Macでは**エミュレーション**で動作するため、パフォーマンスが低下する可能性があります。
+
+最適なパフォーマンスが必要な場合は、ソースからARM64用にビルドしてください:
+
+```bash
+# next-ai-draw-ioをクローン
+git clone https://github.com/DayuanJiang/next-ai-draw-io.git
+cd next-ai-draw-io
+
+# ARM64用にビルド
+docker build --platform linux/arm64 -t next-ai-draw-io:arm64 .
+```
 
 ### 図形生成エンジン単独で起動
 
