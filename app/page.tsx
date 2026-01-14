@@ -83,11 +83,15 @@ export default function Home() {
       setIsLoading(true);
       setError(null);
 
-      const apiKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY;
+      const aiProvider = process.env.NEXT_PUBLIC_AI_PROVIDER || "openai";
+      const aiModel = process.env.NEXT_PUBLIC_AI_MODEL || "gpt-4o";
+      const apiKey = aiProvider === "anthropic"
+        ? process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY
+        : process.env.NEXT_PUBLIC_OPENAI_API_KEY;
 
       if (!apiKey) {
         setError(
-          "NEXT_PUBLIC_OPENAI_API_KEYが設定されていません。.env.localファイルを確認してください。"
+          `API Keyが設定されていません。.env.localファイルで${aiProvider === "anthropic" ? "NEXT_PUBLIC_ANTHROPIC_API_KEY" : "NEXT_PUBLIC_OPENAI_API_KEY"}を確認してください。`
         );
         setIsLoading(false);
         return;
@@ -100,9 +104,9 @@ export default function Home() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "x-ai-provider": "openai",
+            "x-ai-provider": aiProvider,
             "x-ai-api-key": apiKey,
-            "x-ai-model": "gpt-4o",
+            "x-ai-model": aiModel,
           },
           body: JSON.stringify({
             messages: [
@@ -443,7 +447,7 @@ export default function Home() {
         {/* フッター */}
         <div className="p-3 border-t border-gray-200 shrink-0">
           <p className="text-xs text-gray-400 text-center">
-            Powered by OpenAI & draw.io
+            Powered by {process.env.NEXT_PUBLIC_AI_PROVIDER === "anthropic" ? "Anthropic" : "OpenAI"} & draw.io
           </p>
         </div>
       </div>

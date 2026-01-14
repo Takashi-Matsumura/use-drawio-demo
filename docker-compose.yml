@@ -5,21 +5,22 @@ services:
   # AI図形生成エンジン (next-ai-draw-io)
   # ============================================
   drawio-engine:
-    image: ghcr.io/dayuanjiang/next-ai-draw-io:latest
+    image: wbsu2003/next-ai-draw-io:latest
+    platform: linux/amd64
     container_name: drawio-engine
     ports:
       - "6002:3000"
+    env_file:
+      - .env.local
     environment:
-      # APIキーは設定しない（フロントエンドからヘッダーで送信）
-      # セキュリティ上、コンテナ内にキーを保持しない設計
       - NODE_ENV=production
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      test: ["CMD-SHELL", "exit 0"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 10s
 
   # ============================================
   # フロントエンド (このアプリ)

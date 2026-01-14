@@ -8,6 +8,10 @@ export function wrapWithMxFile(xml: string): string {
     return xml;
   }
 
+  // APIから返されるXMLに含まれるルートセル（id="0", id="1"）を除外
+  // これにより重複IDを防ぐ
+  const cleanedXml = removeRootCells(xml);
+
   const diagramId = `diagram-${Date.now()}`;
 
   return `<mxfile>
@@ -16,11 +20,39 @@ export function wrapWithMxFile(xml: string): string {
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        ${xml}
+        ${cleanedXml}
       </root>
     </mxGraphModel>
   </diagram>
 </mxfile>`;
+}
+
+/**
+ * XMLからルートセル（id="0", id="1"で値を持たないもの）を除外する
+ */
+function removeRootCells(xml: string): string {
+  if (!xml) return xml;
+
+  // 全てのmxCellを抽出
+  const cells: string[] = [];
+  const regex = /<mxCell[^>]*(?:\/>|>[\s\S]*?<\/mxCell>)/g;
+  let match;
+
+  while ((match = regex.exec(xml)) !== null) {
+    const cell = match[0];
+    // id="0" のルートセルは除外
+    if (cell.match(/id=["']0["']/)) continue;
+    // id="1" で値を持たないルートセルは除外（value属性がないか空）
+    if (cell.match(/id=["']1["']/) && !cell.match(/value=["'][^"']+["']/)) continue;
+    cells.push(cell);
+  }
+
+  // mxCellが抽出できなかった場合は元のXMLをそのまま返す
+  if (cells.length === 0 && xml.includes('<mxCell')) {
+    return xml;
+  }
+
+  return cells.join('\n');
 }
 
 /**
